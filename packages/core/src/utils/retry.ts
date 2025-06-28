@@ -78,6 +78,7 @@ export async function retryWithBackoff<T>(
   let attempt = 0;
   let currentDelay = initialDelayMs;
   let consecutive429Count = 0;
+  let hasTriedFallback = false;
 
   while (attempt < maxAttempts) {
     attempt++;
@@ -97,15 +98,17 @@ export async function retryWithBackoff<T>(
       if (
         consecutive429Count >= 2 &&
         onPersistent429 &&
-        authType === AuthType.LOGIN_WITH_GOOGLE_PERSONAL
+        authType === AuthType.LOGIN_WITH_GOOGLE_PERSONAL &&
+        !hasTriedFallback
       ) {
         try {
           const fallbackModel = await onPersistent429(authType);
           if (fallbackModel) {
-            // Reset attempt counter and try with new model
-            attempt = 0;
+            // Don't reset attempt counter to avoid infinite retry loops
+            // Just reset consecutive429Count to allow one more try with the new model
             consecutive429Count = 0;
             currentDelay = initialDelayMs;
+            hasTriedFallback = true; // Prevent multiple fallback attempts
             // With the model updated, we continue to the next attempt
             continue;
           }

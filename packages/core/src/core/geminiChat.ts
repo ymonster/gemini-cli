@@ -209,6 +209,14 @@ export class GeminiChat {
       return null;
     }
 
+    // Don't show fallback message again if model was already switched during this session
+    // This prevents repeated "Automatically switching" messages when rate limits persist
+    if (this.config.isModelSwitchedDuringSession()) {
+      // Silently switch to flash model without showing the message again
+      this.config.setModel(fallbackModel);
+      return fallbackModel;
+    }
+
     // Check if config has a fallback handler (set by CLI package)
     const fallbackHandler = this.config.flashFallbackHandler;
     if (typeof fallbackHandler === 'function') {
